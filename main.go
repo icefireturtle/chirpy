@@ -34,7 +34,7 @@ func main() {
 		Handler: mux,
 	}
 
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`OK`))
@@ -47,9 +47,9 @@ func main() {
 
 	mux.Handle("/app/", apiCfg.middlewareMetricsInc(fileHandler))
 
-	mux.HandleFunc("/metrics", apiCfg.handlerMetrics)
+	mux.HandleFunc("GET /metrics", apiCfg.handlerMetrics)
 
-	mux.HandleFunc("/reset", apiCfg.resetMetrics)
+	mux.HandleFunc("POST /reset", apiCfg.resetMetrics)
 
 	s.ListenAndServe()
 
