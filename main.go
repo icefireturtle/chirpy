@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync/atomic"
@@ -23,6 +24,36 @@ func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
 
 func (cfg *apiConfig) resetMetrics(w http.ResponseWriter, r *http.Request) {
 	cfg.fileserverHits.Store(0)
+}
+
+func jsonHandler(w http.ResponseWriter, r *http.Request) {
+
+	type parameter struct {
+		Body string `json:"body"`
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	p := parameter{}
+
+	err := decoder.Decode(&p)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":"Something went wrong"}`))
+		return
+	}
+
+	if len(p.Body) > 140 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(400)
+		w.Write([]byte(`{"error":"Chirp is too long"}`))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"valid":true}`))
+
 }
 
 func main() {
@@ -50,6 +81,8 @@ func main() {
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
 
 	mux.HandleFunc("POST /admin/reset", apiCfg.resetMetrics)
+
+	mux.HandleFunc("POST /api/validate_chirp", jsonHandler)
 
 	s.ListenAndServe()
 
