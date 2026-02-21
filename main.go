@@ -17,6 +17,7 @@ import (
 type apiConfig struct {
 	fileserverHits atomic.Int32
 	queries        *database.Queries
+	platform       string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -34,9 +35,24 @@ func (cfg *apiConfig) resetMetrics(w http.ResponseWriter, r *http.Request) {
 	cfg.fileserverHits.Store(0)
 }
 
+func (cfg *apiConfig) resetUsers(w http.ResponseWriter, r *http.Request) {
+	if cfg.platform != "dev" {
+		errorResponse(w, http.StatusForbidden, "Forbidden: This endpoint is only available in dev environment")
+		return
+	}
+	err := cfg.queries.ResetUsers(r.Context())
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "Failed to reset users")
+		return
+	}
+	jsonResponse(w, http.StatusOK, map[string]string{"message": "Users reset successfully"})
+}
+
 func main() {
 
 	godotenv.Load()
+
+	platform := os.Getenv("PLATFORM")
 
 	dbURL := os.Getenv("DB_URL")
 
@@ -47,7 +63,10 @@ func main() {
 
 	dbQueries := database.New(db)
 
-	apiCfg := &apiConfig{queries: dbQueries}
+	apiCfg := &apiConfig{
+		queries:  dbQueries,
+		platform: platform,
+	}
 
 	mux := http.NewServeMux()
 
@@ -69,9 +88,11 @@ func main() {
 
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
 
-	mux.HandleFunc("POST /admin/reset", apiCfg.resetMetrics)
+	mux.HandleFunc("POST /admin/reset", apiCfg.resetUsers)
 
 	mux.HandleFunc("POST /api/validate_chirp", validateHandler)
+
+	mux.HandleFunc("POST /api/users", apiCfg.createUserHandler)
 
 	s.ListenAndServe()
 
