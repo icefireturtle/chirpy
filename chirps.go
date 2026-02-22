@@ -75,3 +75,35 @@ func (cfg *apiConfig) chirpsHandler(w http.ResponseWriter, r *http.Request) {
 
 	jsonResponse(w, http.StatusCreated, response)
 }
+
+func (cfg *apiConfig) viewChirpsHandler(w http.ResponseWriter, r *http.Request) {
+
+	type Chirp struct {
+		ID        uuid.UUID `json:"id"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
+		Body      string    `json:"body"`
+		UserID    uuid.UUID `json:"user_id"`
+	}
+
+	stored, err := cfg.queries.ViewChirps(r.Context())
+	if err != nil {
+		log.Printf("Error viewing chirps: %v", err)
+		errorResponse(w, http.StatusInternalServerError, "Failed to view chirps")
+		return
+	}
+
+	chirps := []Chirp{}
+
+	for _, c := range stored {
+		chirps = append(chirps, Chirp{
+			ID:        c.ID,
+			CreatedAt: c.CreatedAt,
+			UpdatedAt: c.UpdatedAt,
+			Body:      c.Body,
+			UserID:    c.UserID,
+		})
+	}
+
+	jsonResponse(w, http.StatusOK, chirps)
+}

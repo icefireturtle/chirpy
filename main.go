@@ -94,6 +94,8 @@ func main() {
 
 	mux.HandleFunc("POST /api/chirps", apiCfg.chirpsHandler)
 
+	mux.HandleFunc("GET /api/chirps", apiCfg.viewChirpsHandler)
+
 	s.ListenAndServe()
 
 }
