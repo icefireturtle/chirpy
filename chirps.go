@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -89,7 +90,7 @@ func (cfg *apiConfig) viewChirpsHandler(w http.ResponseWriter, r *http.Request) 
 	stored, err := cfg.queries.ViewChirps(r.Context())
 	if err != nil {
 		log.Printf("Error viewing chirps: %v", err)
-		errorResponse(w, http.StatusInternalServerError, "Failed to view chirps")
+		errorResponse(w, http.StatusInternalServerError, "Failed to retreive chirps")
 		return
 	}
 
@@ -106,4 +107,42 @@ func (cfg *apiConfig) viewChirpsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	jsonResponse(w, http.StatusOK, chirps)
+}
+
+func (cfg *apiConfig) viewChirpHandler(w http.ResponseWriter, r *http.Request) {
+
+	type Chirp struct {
+		ID        uuid.UUID `json:"id"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
+		Body      string    `json:"body"`
+		UserID    uuid.UUID `json:"user_id"`
+	}
+
+	id, err := uuid.Parse(r.PathValue("chirpID"))
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "Invalid ID")
+		return
+	}
+
+	single, err := cfg.queries.ViewChirp(r.Context(), id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			errorResponse(w, http.StatusNotFound, "Chirp not found")
+			return
+		}
+		log.Printf("Error viewing chirp: %v", err)
+		errorResponse(w, http.StatusInternalServerError, "Failed to retreive chirp")
+		return
+	}
+
+	response := Chirp{
+		ID:        single.ID,
+		CreatedAt: single.CreatedAt,
+		UpdatedAt: single.UpdatedAt,
+		Body:      single.Body,
+		UserID:    single.UserID,
+	}
+
+	jsonResponse(w, http.StatusOK, response)
 }
