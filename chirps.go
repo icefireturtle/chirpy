@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"workspace/github.com/icefireturtle/chirpy/internal/auth"
 	"workspace/github.com/icefireturtle/chirpy/internal/database"
 
 	"github.com/google/uuid"
@@ -15,8 +16,7 @@ import (
 
 func (cfg *apiConfig) chirpsHandler(w http.ResponseWriter, r *http.Request) {
 	type incomingChirp struct {
-		Body    string    `json:"body"`
-		User_id uuid.UUID `json:"user_id"`
+		Body string `json:"body"`
 	}
 
 	type Chirp struct {
@@ -29,10 +29,22 @@ func (cfg *apiConfig) chirpsHandler(w http.ResponseWriter, r *http.Request) {
 
 	const maxBodyLength = 140
 
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		errorResponse(w, http.StatusUnauthorized, "Invalid token")
+		return
+	}
+
+	userID, err := auth.ValidateJWT(token, cfg.JWT)
+	if err != nil {
+		errorResponse(w, http.StatusUnauthorized, "Invalid token")
+		return
+	}
+
 	decoder := json.NewDecoder(r.Body)
 	i := incomingChirp{}
 
-	err := decoder.Decode(&i)
+	err = decoder.Decode(&i)
 	if err != nil {
 		errorResponse(w, http.StatusBadRequest, "Something went wrong")
 		return
@@ -56,7 +68,7 @@ func (cfg *apiConfig) chirpsHandler(w http.ResponseWriter, r *http.Request) {
 
 	params := database.CreateChirpsParams{
 		Body:   i.Body,
-		UserID: i.User_id,
+		UserID: userID,
 	}
 
 	chirp, err := cfg.queries.CreateChirps(r.Context(), params)

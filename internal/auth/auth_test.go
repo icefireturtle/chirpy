@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"net/http"
 	"testing"
 	"time"
 
@@ -25,4 +26,21 @@ func TestJWT(t *testing.T) {
 	if validatedID != userID {
 		t.Fatalf("expected user ID %s, got %s", userID, validatedID)
 	}
+}
+
+func TestGetBearerToken(t *testing.T) {
+	headers := http.Header{}
+	headers.Set("Authorization", "Bearer some-tokens-be-token-here")
+
+	t.Logf("Headers: %v", headers)
+
+	authHeader := headers.Get("Authorization")
+	t.Logf("Authorization header value: %s", authHeader)
+
+	check, err := GetBearerToken(headers)
+	if err != nil {
+		t.Logf("Error checking token")
+	}
+	t.Logf("Passed through function value: %s", check)
+
 }

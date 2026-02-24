@@ -18,6 +18,7 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	queries        *database.Queries
 	platform       string
+	JWT            string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -56,6 +57,8 @@ func main() {
 
 	dbURL := os.Getenv("DB_URL")
 
+	JWT := os.Getenv("JWT_SECRET")
+
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatal("Failed to connect to Database: %v", err)
@@ -66,6 +69,7 @@ func main() {
 	apiCfg := &apiConfig{
 		queries:  dbQueries,
 		platform: platform,
+		JWT:      JWT,
 	}
 
 	mux := http.NewServeMux()
