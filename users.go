@@ -138,3 +138,57 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 	jsonResponse(w, http.StatusOK, response)
 
 }
+
+func (cfg *apiConfig) accountHandler(w http.ResponseWriter, r *http.Request) {
+
+	type Account struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		errorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	user, err := auth.ValidateJWT(token, cfg.JWT)
+	if err != nil {
+		errorResponse(w, http.StatusUnauthorized, "Missing or Invalid token")
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	a := Account{}
+
+	err = decoder.Decode(&a)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "Something went wrong")
+		return
+	}
+
+	hashed, err := auth.HashPassword(a.Password)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "Something went wrong")
+		return
+	}
+
+	params := database.UpdateUserParams{
+		ID:             user,
+		Email:          a.Email,
+		HashedPassword: hashed,
+	}
+
+	updated, err := cfg.queries.UpdateUser(r.Context(), params)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "Something went wrong")
+		return
+	}
+
+	response := Account{
+		Email: updated.Email,
+	}
+
+	jsonResponse(w, http.StatusOK, response)
+
+}
