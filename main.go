@@ -112,6 +112,8 @@ func main() {
 
 	mux.HandleFunc("DELETE /api/chirps/{chirpID}", apiCfg.deleteChirpHandler)
 
+	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.polkaHandler)
+
 	s.ListenAndServe()
 
 }

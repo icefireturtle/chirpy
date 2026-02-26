@@ -20,10 +20,11 @@ func (cfg *apiConfig) createUserHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	type User struct {
-		ID        uuid.UUID `json:"id"`
-		CreatedAt time.Time `json:"created_at"`
-		UpdatedAt time.Time `json:"updated_at"`
-		Email     string    `json:"email"`
+		ID          uuid.UUID `json:"id"`
+		CreatedAt   time.Time `json:"created_at"`
+		UpdatedAt   time.Time `json:"updated_at"`
+		Email       string    `json:"email"`
+		IsChirpyRed bool      `json:"is_chirpy_red"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -52,10 +53,11 @@ func (cfg *apiConfig) createUserHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	response := User{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
+		ID:          user.ID,
+		CreatedAt:   user.CreatedAt,
+		UpdatedAt:   user.UpdatedAt,
+		Email:       user.Email,
+		IsChirpyRed: user.IsChirpyRed,
 	}
 
 	jsonResponse(w, http.StatusCreated, response)
@@ -75,6 +77,7 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 		Email        string    `json:"email"`
 		Token        string    `json:"token"`
 		RefreshToken string    `json:"refresh_token"`
+		IsChirpyRed  bool      `json:"is_chirpy_red"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -133,6 +136,7 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 		Email:        user.Email,
 		Token:        token,
 		RefreshToken: session.Token,
+		IsChirpyRed:  user.IsChirpyRed,
 	}
 
 	jsonResponse(w, http.StatusOK, response)
@@ -191,4 +195,36 @@ func (cfg *apiConfig) accountHandler(w http.ResponseWriter, r *http.Request) {
 
 	jsonResponse(w, http.StatusOK, response)
 
+}
+
+func (cfg *apiConfig) polkaHandler(w http.ResponseWriter, r *http.Request) {
+
+	type polkaPayment struct {
+		Event string `json:"event"`
+		Data  struct {
+			UserID uuid.UUID `json:"user_id"`
+		} `json:"data"`
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	p := polkaPayment{}
+
+	err := decoder.Decode(&p)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "Something went wrong")
+		return
+	}
+
+	if p.Event != "user.upgraded" {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	err = cfg.queries.IsChirpyRed(r.Context(), p.Data.UserID)
+	if err != nil {
+		errorResponse(w, http.StatusNotFound, "Not Found")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
