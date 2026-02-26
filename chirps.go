@@ -158,3 +158,60 @@ func (cfg *apiConfig) viewChirpHandler(w http.ResponseWriter, r *http.Request) {
 
 	jsonResponse(w, http.StatusOK, response)
 }
+
+func (cfg *apiConfig) deleteChirpHandler(w http.ResponseWriter, r *http.Request) {
+
+	type Chirp struct {
+		ID        uuid.UUID `json:"id"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
+		Body      string    `json:"body"`
+		UserID    uuid.UUID `json:"user_id"`
+	}
+
+	id, err := uuid.Parse(r.PathValue("chirpID"))
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "Invalid ID")
+		return
+	}
+
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		errorResponse(w, http.StatusUnauthorized, "Something went wrong")
+		return
+	}
+
+	user, err := auth.ValidateJWT(token, cfg.JWT)
+	if err != nil {
+		errorResponse(w, http.StatusUnauthorized, "Missing or Invalid token")
+		return
+	}
+
+	chirp, err := cfg.queries.ViewChirp(r.Context(), id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			errorResponse(w, http.StatusNotFound, "Chirp not found")
+			return
+		}
+		errorResponse(w, http.StatusInternalServerError, "Failed to retreive chirp")
+		return
+	}
+
+	if chirp.UserID != user {
+		errorResponse(w, http.StatusForbidden, "Forbidden")
+		return
+	}
+
+	params := database.DeleteChirpParams{
+		ID:     chirp.ID,
+		UserID: user,
+	}
+
+	_, err = cfg.queries.DeleteChirp(r.Context(), params)
+	if err != nil {
+		errorResponse(w, http.StatusForbidden, "Forbidden")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
