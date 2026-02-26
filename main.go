@@ -19,6 +19,7 @@ type apiConfig struct {
 	queries        *database.Queries
 	platform       string
 	JWT            string
+	POLKA          string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -59,6 +60,8 @@ func main() {
 
 	JWT := os.Getenv("JWT_SECRET")
 
+	POLKA := os.Getenv("POLKA_KEY")
+
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatal("Failed to connect to Database: %v", err)
@@ -70,6 +73,7 @@ func main() {
 		queries:  dbQueries,
 		platform: platform,
 		JWT:      JWT,
+		POLKA:    POLKA,
 	}
 
 	mux := http.NewServeMux()

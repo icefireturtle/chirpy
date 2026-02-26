@@ -206,10 +206,21 @@ func (cfg *apiConfig) polkaHandler(w http.ResponseWriter, r *http.Request) {
 		} `json:"data"`
 	}
 
+	api, err := auth.GetAPIKey(r.Header)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	if api != cfg.POLKA {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	decoder := json.NewDecoder(r.Body)
 	p := polkaPayment{}
 
-	err := decoder.Decode(&p)
+	err = decoder.Decode(&p)
 	if err != nil {
 		errorResponse(w, http.StatusBadRequest, "Something went wrong")
 		return
