@@ -99,11 +99,30 @@ func (cfg *apiConfig) viewChirpsHandler(w http.ResponseWriter, r *http.Request) 
 		UserID    uuid.UUID `json:"user_id"`
 	}
 
-	stored, err := cfg.queries.ViewChirps(r.Context())
-	if err != nil {
-		log.Printf("Error viewing chirps: %v", err)
-		errorResponse(w, http.StatusInternalServerError, "Failed to retreive chirps")
-		return
+	s := r.URL.Query().Get("author_id")
+
+	var stored []database.Chirp
+	var err error
+
+	if s != "" {
+		q, err := uuid.Parse(s)
+		if err != nil {
+			errorResponse(w, http.StatusInternalServerError, "Failed parse")
+			return
+		}
+		stored, err = cfg.queries.ViewChirpsByAuthor(r.Context(), q)
+		if err != nil {
+			log.Printf("Error viewing chirps: %v", err)
+			errorResponse(w, http.StatusInternalServerError, "Failed to retreive chirps")
+			return
+		}
+	} else {
+		stored, err = cfg.queries.ViewChirps(r.Context())
+		if err != nil {
+			log.Printf("Error viewing chirps: %v", err)
+			errorResponse(w, http.StatusInternalServerError, "Failed to retreive chirps")
+			return
+		}
 	}
 
 	chirps := []Chirp{}

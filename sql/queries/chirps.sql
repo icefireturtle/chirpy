@@ -9,6 +9,12 @@ SELECT *
 FROM chirps
 ORDER BY created_at ASC;
 
+-- name: ViewChirpsByAuthor :many
+SELECT *
+FROM chirps
+WHERE user_id=$1
+ORDER BY created_at ASC;
+
 -- name: ViewChirp :one
 
 SELECT *
