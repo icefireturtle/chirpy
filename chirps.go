@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -100,6 +101,7 @@ func (cfg *apiConfig) viewChirpsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	s := r.URL.Query().Get("author_id")
+	t := r.URL.Query().Get("sort")
 
 	var stored []database.Chirp
 	var err error
@@ -116,15 +118,24 @@ func (cfg *apiConfig) viewChirpsHandler(w http.ResponseWriter, r *http.Request) 
 			errorResponse(w, http.StatusInternalServerError, "Failed to retreive chirps")
 			return
 		}
-	} else {
-		stored, err = cfg.queries.ViewChirps(r.Context())
-		if err != nil {
-			log.Printf("Error viewing chirps: %v", err)
-			errorResponse(w, http.StatusInternalServerError, "Failed to retreive chirps")
-			return
+	} else if t != "" {
+		if t == "desc" {
+			stored, err = cfg.queries.ViewChirps(r.Context())
+			if err != nil {
+				log.Printf("Error viewing chirps: %v", err)
+				errorResponse(w, http.StatusInternalServerError, "Failed to retreive chirps")
+				return
+			}
+			sort.Slice(stored, func(i, j int) bool { return stored[i].CreatedAt.After(stored[j].CreatedAt) })
+		} else {
+			stored, err = cfg.queries.ViewChirps(r.Context())
+			if err != nil {
+				log.Printf("Error viewing chirps: %v", err)
+				errorResponse(w, http.StatusInternalServerError, "Failed to retreive chirps")
+				return
+			}
 		}
 	}
-
 	chirps := []Chirp{}
 
 	for _, c := range stored {
